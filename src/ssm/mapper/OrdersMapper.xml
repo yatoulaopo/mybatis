@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ssm.mapper.OrdersMapper">
+	<!-- resultMap方式实现一对一：根据订单关联查询订单信息 -->
+	<resultMap type="orders" id="query_orders_map">
+		<id column="id" property="id"/>
+		<result column="user_id" property="user_id"/>
+		<result column="createTime" property="createTime"/>
+		<!-- 把select字段匹配到user类中去 -->
+		<association property="user" javaType="user">
+			<id column="user_id" property="id"/>
+			<result column="username" property="username"/>
+			<result column="city" property="city"/>
+			<result column="country" property="country"/>
+		</association>
+	</resultMap>
+	 <select id="selectByResultMap" resultMap="query_orders_map">
+	 	select orders.*,user.username,user.city,user.country from orders inner join user on orders.user_id = user.id;
+	 </select>
+	 
+	 
+	 
+	 <!-- 配置延迟加载 ，查询Orders，延迟加载OrdersDetail-->
+	 <resultMap type="orders" id="lazy_Loading_query">
+	 		<!-- 延迟加载：订单延迟加载订单项，所以是collection -->
+	 		<id column="id" property="id"/>
+	 		<result column="user_id" property="user_id"/>
+	 		<result column="createTime" property="createTime"/>
+	 		<collection property="listOrdersdetail" ofType="Ordersdetail" column="id" select="ssm.mapper.OrdersDetailMapper.selectByOrderId">
+	 			
+	 		</collection>
+	 </resultMap>
+	 <select id="findOrdersLazyLoading" resultMap="lazy_Loading_query">
+	 	select * from orders
+	 </select>
+	 
+</mapper>

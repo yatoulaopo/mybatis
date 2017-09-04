@@ -1,0 +1,144 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper
+  PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN"
+  "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="ssm.mapper.UserMapper">
+	<!-- 二级缓存的配置，二级缓存和namespace保持一致，即一个namespace保持同一个二级缓存区 -->
+	<!-- 整合ehcache,  readOnly为true性能高，但不安全，默认false，安全 -->
+	<cache type="org.mybatis.caches.ehcache.EhcacheCache" flushInterval="6000" size="1024" readOnly="false"></cache>
+	
+	<!-- 定义resultMap -->
+	<resultMap type="user" id="userResultMap">
+		<id column="id_1" property="id"/>
+		<result column="name" property="username"/>
+		<result column="country" property="country"/>
+	</resultMap>
+	
+	<select id="findUserById" parameterType="int" resultType="user">
+   		select * from user where id = #{id}
+   	</select>
+   	<insert id="insertUser" parameterType="user">
+   		insert into user values(null,#{username},#{city},#{country})
+   		<selectKey keyProperty="id" resultType="int" order="BEFORE">
+   			select last_insert_id()
+   		</selectKey>
+   	</insert>
+   	<delete id="deleteUserById" parameterType="user">
+   		delete from user where id = #{id}
+   	</delete>
+   	<update id="updateById" parameterType="user">
+   		update user set username = #{username},city = #{city},country = #{country} where id=#{id}
+   	</update>
+   	
+   	<!-- parameterMap是HashMap类型 -->
+   	<select id="selectByHashMap" parameterType="hashmap" resultType="user">
+   		select * from user where username like #{username}
+   	</select>
+   	
+   	<!-- parameterMap是包装类型：UserQueryVo -->
+   	<select id="selectByUserQueryVo" parameterType="userQueryVo" resultType="user">
+   		select * from user where country like '%${userCustom.country}%'
+   	</select>
+   	
+   	<!-- resultMap -->
+   	<select id="selectByUserQueryVo1" parameterType="userQueryVo" resultMap="userResultMap">
+   		select id id_1,username name,country,city from user where country like '%${userCustom.country}%'
+   	</select>
+   	
+   	
+   	<!--动态sql片段 where city="" and country=""-->
+	<sql id="query_user_where">
+		<!-- 判断city是否为空，不为空才where city="" -->
+		<if test="userCustom !=null">
+			<if test="userCustom.city !=null and userCustom.city !=''">
+				and user.city = #{userCustom.city}
+			</if>
+			<if test="userCustom.country !=null and userCustom.country !=''">
+				and user.country = #{userCustom.country}
+			</if>
+		</if>
+	</sql>
+   	<!-- sql片段 引入，必须先判断where的条件是否为空，如果为空，则去除这个查询条件 -->
+   	<!-- where city="" and country="" -->
+   	<select id="selectByDynamicSql" parameterType="userQueryVo" resultType="user">
+   		select * from user
+   		<where>
+   			<include refid="query_user_where"></include>
+   		</where>
+   	</select>
+   	
+   	
+   	
+   	<!-- sql片段   where id=1 or id=6 or id=16 -->
+   	<sql id="query_user_id">
+   		<if test="listId != null">
+   			<foreach collection="listId" item="user_id" open="and (" close=")" separator="or">
+   				id=#{user_id}
+   			</foreach>
+   		</if>
+   	</sql>
+   	
+   	<select id="selectByIdList" parameterType="userQueryVo" resultType="user">
+   		select * from user 
+   		<where>
+   			<include refid="query_user_id"></include>
+   		</where>
+   	</select>
+   	
+   	
+   	<!-- sql片段   where id in (1,6,16) -->
+   	<sql id="query_user_id1">
+   		<if test="listId != null">
+   			<foreach collection="listId" item="user_id" open="and id in (" close=")" separator=",">
+   				#{user_id}
+   			</foreach>
+   		</if>
+   	</sql>
+   	<select id="selectByIdList1" parameterType="userQueryVo" resultType="user">
+   		select * from user 
+   		<where>
+   			<include refid="query_user_id"></include>
+   		</where>
+   	</select>
+   	
+   	
+   	
+   	
+   	<!-- 多对多resultMap：用户查询商品 -->
+   	<resultMap type="user" id="query_user_resultMap">
+   		<id column="user_id" property="id"/>
+   		<result column="username" property="username"/>
+		<result column="city" property="city"/>
+		<result column="country" property="country"/>
+		<collection property="listOrders" ofType="orders">
+			<id column="id" property="id"/>
+			<result column="user_id" property="user_id"/>
+			<result column="createTme" property="createTme"/>
+			<collection property="listOrdersdetail" ofType="Ordersdetail">
+				<id column="ordersdetail_id" property="id"/>
+				<result column="itemName" property="itemName"/>
+				<result column="num" property="num"/>
+				<result column="order_id" property="order_id"/>
+				<result column="items_id" property="items_id"/>
+				<association property="items" javaType="items">
+					<id column="items_id" property="id"/>
+					<result column="name" property="name"/>
+				</association>
+			</collection>
+		</collection>
+   	</resultMap>
+   	<select id="selectByResultMapManyToMany" resultMap="query_user_resultMap">
+   		select orders.*,user.username,user.city,user.country,ordersdetail.id ordersdetail_id,itemName,num,items_id,items.name from user,orders,ordersdetail,items where user.id = orders.user_id and ordersdetail.order_id = orders.id and ordersdetail.items_id = items.id
+   	</select>
+   	
+   	
+   	<!-- 批量插入2000条数据 -->
+   	<insert id="insertBatch" parameterType="java.util.List">
+   		insert into user values
+   		<foreach collection="list" item="user" separator=",">
+   			(null,#{user.username},#{user.city},#{user.country})
+   		</foreach>
+   	</insert>
+   	
+   	
+</mapper>
